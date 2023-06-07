@@ -1,6 +1,12 @@
 # Чат-бот на базе FRED-T5
 ## Краткое описание
+<img src="img/anfice_logo.png" width="400">
+
 Система позволяет вести беседы подобного типа:
+
+
+<p><img src="img/screen1.jpg" width="300"> <img src="img/screen2.jpg" width="300"></p>
+
 ## Архитектура системы
 **В составе диалогового пайплайна есть следующие модели:**
 1. [Интерпретатор](https://huggingface.co/Den4ikAI/ruT5-small-interpreter) на базе ruT5-small
@@ -19,12 +25,13 @@
  - 6gb дискового пространства
 **Примечание**: на процессоре система работает очень медленно!
 ## Запуск
-- Python <= 3.10
+- Python <= 3.10 >= 3.7
 - Git
 
 Скачайте проект на компьютер:
 ```
-git clone 
+git clone https://github.com/Den4ikAI/Anfice-chatbot.git
+cd Anfice-chatbot
 ```
 Установите все необходимые модули:
 ```
@@ -46,6 +53,6 @@ python3 telegram_bot.py
 3. Датасет hh-rlhf на русском [карточка hf](https://huggingface.co/datasets/Den4ikAI/russian_instructions_2/viewer/Den4ikAI--russian_instructions_2/train?row=20)
 4. Датасет инструкций от GPT-4 (не мой) [карточка hf](https://huggingface.co/datasets/lksy/ru_instruct_gpt4)
 ## Как поддержать?
-1. **Деньгами:** можно задонатить по ссылке ниже
+1. **Деньгами:** можно задонатить по ссылке
 2. **GPU:** буду рад доступу к GPU с >24gb VRAM
 3. **Предложениями:** вы можете написать мне в [telegram](https://t.me/chckdskeasfsd) со своими предложениями развития проекта

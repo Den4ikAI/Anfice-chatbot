@@ -1,0 +1,11 @@
+transformers==4.29.0
+torch==1.13.1
+python-telegram-bot
+trafilatura
+google
+rapidfuzz
+pymorphy2
+wiki-ru-wordnet
+nltk
+sentence_transformers
+protobuf==3.19.0

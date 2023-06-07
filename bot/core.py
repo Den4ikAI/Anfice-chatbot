@@ -48,8 +48,8 @@ class CoreSession:
         self.logger = logging.getLogger('Core')
         self.max_context_length = 4
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.logger.debug('Version = [{}]'.format(config.VERSION))
-        self.logger.debug('Device = [{}]'.format(self.device))
+        self.logger.info('Version = [{}]'.format(config.VERSION))
+        self.logger.info('Device = [{}]'.format(self.device))
         self.context_prepare = ContextPrepare()
         self.internet_search = InternetSearch()
         self.text_search = TextSearch()
@@ -69,7 +69,7 @@ class CoreSession:
             tags = self.postagger.tag(message)
             print(tags)
             if any((u'NPRO' in tag) for tag in tags) or any((u'PRCL' in tag) for tag in tags):
-                self.logger.debug('Anaphora detected! Interpreting...')
+                self.logger.info('Anaphora detected! Interpreting...')
                 context = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in context]
                 context.append(message)

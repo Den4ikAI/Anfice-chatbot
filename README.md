@@ -53,6 +53,6 @@ python3 telegram_bot.py
 3. Датасет hh-rlhf на русском [карточка hf](https://huggingface.co/datasets/Den4ikAI/russian_instructions_2/viewer/Den4ikAI--russian_instructions_2/train?row=20)
 4. Датасет инструкций от GPT-4 (не мой) [карточка hf](https://huggingface.co/datasets/lksy/ru_instruct_gpt4)
 ## Как поддержать?
-1. **Деньгами:** можно задонатить по ссылке
+1. **Деньгами:** можно задонатить сюда -> 5336 6901 8807 9984 (сбер)
 2. **GPU:** буду рад доступу к GPU с >24gb VRAM
 3. **Предложениями:** вы можете написать мне в [telegram](https://t.me/chckdskeasfsd) со своими предложениями развития проекта

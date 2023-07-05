@@ -29,7 +29,7 @@ class RuT5Interpreter:
         outputs = set()
         for i in range(len(out_ids)):
             o = self.tokenizer.decode(out_ids[i][1:])
-            o = o[:o.index('</s>')]
+            o = o.replace('</s>', '')
             outputs.add(o)
 
         return list(outputs)[0]

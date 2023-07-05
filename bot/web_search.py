@@ -1,7 +1,9 @@
 from googlesearch import search
+import wikipedia
 import logging
 import trafilatura
 
+wikipedia.set_lang('ru')
 
 class InternetSearch:
     def __init__(self):
@@ -37,22 +39,28 @@ class InternetSearch:
         outputs = []
         urls = []
         qtext = qtext.replace('?','')
-        for url in search(qtext, num=num_return_sequences, stop=num_return_sequences):
-            urls.append(url)
-        # print(urls)
-        for i in urls:
-            if 'wiki' in i:
-                urls = self.wiki_sort(urls)
-                break
-        
-        for url in urls:
-            if self.check_blacklist(url):
-                try:
-                    text = self.get_url_text(url)
-                    if self.get_num_words(text) > 50:
-                        outputs.append(text)
-                    else:
-                        self.logger.warning('Url [{}] does not have text!'.format(url))
-                except Exception as e:
-                    self.logger.exception(e)
+        if qtext.lower().startswith('что') or qtext.lower().startswith('кто'):
+            try:
+                outputs.append(wikipedia.summary(qtext))
+            except wikipedia.WikipediaException as e:
+                self.logger.warning(e)
+        if len(outputs) == 0:
+            for url in search(qtext, num=num_return_sequences, stop=num_return_sequences):
+                urls.append(url)
+            # print(urls)
+            for i in urls:
+                if 'wiki' in i:
+                    urls = self.wiki_sort(urls)
+                    break
+
+            for url in urls:
+                if self.check_blacklist(url):
+                    try:
+                        text = self.get_url_text(url)
+                        if self.get_num_words(text) > 50:
+                            outputs.append(text)
+                        else:
+                            self.logger.warning('Url [{}] does not have text!'.format(url))
+                    except Exception as e:
+                        self.logger.exception(e)
         return outputs

@@ -19,18 +19,16 @@ class Instructor:
             data = self.tokenizer(sample, max_length=1024, truncation=True, return_tensors="pt")
             data = {k: v.to(self.model.device) for k, v in data.items()}
             output_ids = self.model.generate(
-                **data,
-                generation_config=self.generation_config
-            )[0]
+                **data,generation_config=self.generation_config)[0]
 
         out = self.tokenizer.decode(output_ids.tolist())
-        out = out.replace("<s>", "").replace("</s>", "").replace('<extra_id_0>', '')
+        out = out.replace("<s>", "").replace("</s>", "").replace('<extra_id_0>', '').replace('Ответ:','')
         return [out]
 
-    def generate2(self, dialog):
-        prompt = '<SC6>' + '\n'.join(dialog) + '\nТы ответила: <extra_id_0>'
+    def generate2(self, dialog, system_prompt):
+        prompt = f'<SC1>{system_prompt} Продолжи диалог:' + '\n'.join(dialog) + '\nТы: <extra_id_0>'.format(system_prompt)
         input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids.to(self.device)
-        out_ids = self.model.generate(input_ids, generation_config=self.generation_config, repetition_penalty=1.2)
+        out_ids = self.model.generate(input_ids, do_sample=True, temperature=0.9, max_new_tokens=512, top_p=0.85, top_k=2)
         t5_output = self.tokenizer.decode(out_ids[0], skip_special_tokens=True).replace('<extra_id_0>', '').strip()
         if 'Собеседник' in t5_output:
             t5_output = t5_output.split('Собеседник')[0].strip()

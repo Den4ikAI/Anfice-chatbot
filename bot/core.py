@@ -28,10 +28,10 @@ class ContextPrepare:
 
         dialog = []
         if last_user_message is not None and last_user_message != '':
-            dialog.append('Собеседник сказал: ' + last_user_message.strip().lower().capitalize() + '\n')
+            dialog.append('Собеседник: ' + last_user_message.strip().lower().capitalize() + '\n')
         if last_robot_message is not None and last_robot_message != '':
-            dialog.append('Ты ответила: ' + last_robot_message.strip().lower().capitalize() + '\n')
-        dialog.append('Собеседник сказал: ' + msg)
+            dialog.append('Ты: ' + last_robot_message.strip().lower().capitalize() + '\n')
+        dialog.append('Собеседник: ' + msg)
 
         return dialog
 
@@ -39,7 +39,7 @@ class ContextPrepare:
         return '<SC6>Человек: {}\nБот: <extra_id_0>'.format(context[-1])
 
     def construct_retriever_context(self, page, question):
-        return '<SC6>Текст: {}\nВопрос: {}\nОтвет: <extra_id_0>'.format(page, question)
+        return '<SC6>Человек: Текст: {}\nВопрос: {}\nОтвет: <extra_id_0>'.format(page, question)
 
 
 class CoreSession:
@@ -68,7 +68,7 @@ class CoreSession:
         if len(message.split(' ')) > 3:
             tags = self.postagger.tag(message)
             print(tags)
-            if any((u'NPRO' in tag) for tag in tags) or any((u'PRCL' in tag) for tag in tags):
+            if any((u'NPRO' in tag) for tag in tags) or "это" in message.split(' '):
                 self.logger.info('Anaphora detected! Interpreting...')
                 context = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in context]
@@ -79,6 +79,10 @@ class CoreSession:
 
     def add_bot_message(self, user_id, message):
         self.dialog.add_message(user_id, 'bot', message)
+        return None
+
+    def set_system_prompt(self, user_id, prompt):
+        self.dialog.set_system_prompt(user_id, prompt)
         return None
 
     def truncate_context(self, user_id):
@@ -98,10 +102,12 @@ class CoreSession:
     def process_user_message(self, user_id):
         replicas = self.dialog.get_dialog(user_id)
         context = [dialogue[1] for dialogue in replicas]
+        system_prompt = self.dialog.get_system_prompt(user_id)
         chitchat_answers = []
         qa_answers = []
         self.logger.info('Started processing messages user_id=[{}]'.format(user_id))
         self.logger.info('Message = [{}]'.format(context[-1]))
+        self.logger.info('Persona = [{}]'.format(system_prompt))
         mode = self.phrase_classifier.get_sentence_type(context[-1])
         self.logger.info('Mode = [{}]'.format(mode))
         modality = self.modality_detector.modality(context[-1])
@@ -113,7 +119,8 @@ class CoreSession:
                 last_bot_message = context[-2]
             else:
                 last_bot_message = None
-            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                  system_prompt)
 
             if fuzz.ratio(str(t5_output), last_bot_message) > 75:
                 self.logger.warning('Repetition detected! Clearing context and restarting generation')
@@ -121,7 +128,8 @@ class CoreSession:
                 self.add_user_message(user_id, message)
                 replicas = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in replicas]
-                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                      system_prompt)
             chitchat_answers.extend(t5_output)
 
         elif mode == 'about_user':
@@ -130,7 +138,8 @@ class CoreSession:
                 last_bot_message = context[-2]
             else:
                 last_bot_message = None
-            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                  system_prompt)
 
             if fuzz.ratio(str(t5_output), last_bot_message) > 75:
                 self.logger.warning('Repetition detected! Clearing context and restarting generation')
@@ -138,7 +147,8 @@ class CoreSession:
                 self.add_user_message(user_id, message)
                 replicas = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in replicas]
-                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                      system_prompt)
             chitchat_answers.extend(t5_output)
 
         elif mode == 'about_system' and modality == 'question':
@@ -147,7 +157,8 @@ class CoreSession:
                 last_bot_message = context[-2]
             else:
                 last_bot_message = None
-            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                  system_prompt)
 
             if fuzz.ratio(str(t5_output), last_bot_message) > 75:
                 self.logger.warning('Repetition detected! Clearing context and restarting generation')
@@ -155,10 +166,12 @@ class CoreSession:
                 self.add_user_message(user_id, message)
                 replicas = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in replicas]
-                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                      system_prompt)
             chitchat_answers.extend(t5_output)
 
-        elif (mode == 'exact_question' or mode == 'inaccurate_question') and modality == 'question':
+        elif (mode == 'exact_question' or mode == 'inaccurate_question') and modality == 'question' and len(
+                context[-1].split(' ')) > 2:
             cls = self.qa_classifier.get_question_type(context[-1])
             self.logger.info('Mode = [{}]'.format(cls))
             if cls == 'exact_question':
@@ -166,8 +179,11 @@ class CoreSession:
                 web_outputs = self.internet_search.web_search(message, num_return_sequences=5)
                 if web_outputs:
                     for page in tqdm(web_outputs):
-                        paragraphs = list(set(self.text_search.get_relevant_paragraphs(message, page)))
-                        paragraph = self.text_search.get_right_answer(paragraphs, message)
+                        try:
+                            paragraphs = list(set(self.text_search.get_relevant_paragraphs(message, page)))
+                            paragraph = self.text_search.get_right_answer(paragraphs, message)
+                        except:
+                            paragraph = None
                         # print(paragraph)
                         if paragraph is not None:
                             qa_answers.extend(
@@ -193,8 +209,11 @@ class CoreSession:
 
             if web_outputs:
                 for page in tqdm(web_outputs):
-                    paragraphs = list(set(self.text_search.get_relevant_paragraphs(message, page)))
-                    paragraph = self.text_search.get_right_answer(paragraphs, message)
+                    try:
+                        paragraphs = list(set(self.text_search.get_relevant_paragraphs(message, page)))
+                        paragraph = self.text_search.get_right_answer(paragraphs, message)
+                    except:
+                        paragraph = None
                     # print(paragraph)
                     if paragraph is not None:
                         qa_answers.extend(
@@ -215,14 +234,16 @@ class CoreSession:
                 last_bot_message = context[-2]
             else:
                 last_bot_message = None
-            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                  system_prompt)
             if fuzz.ratio(str(t5_output), last_bot_message) > 75:
                 self.logger.warning('Repetition detected! Clearing context and restarting generation')
                 self.clear_context(user_id)
                 self.add_user_message(user_id, message)
                 replicas = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in replicas]
-                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                      system_prompt)
             chitchat_answers.extend(t5_output)
         else:
             message = context[-1]
@@ -230,7 +251,8 @@ class CoreSession:
                 last_bot_message = context[-2]
             else:
                 last_bot_message = None
-            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+            t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                  system_prompt)
 
             if fuzz.ratio(str(t5_output), last_bot_message) > 75:
                 self.logger.warning('Repetition detected! Clearing context and restarting generation')
@@ -238,7 +260,8 @@ class CoreSession:
                 self.add_user_message(user_id, message)
                 replicas = self.dialog.get_dialog(user_id)
                 context = [dialogue[1] for dialogue in replicas]
-                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context))
+                t5_output = self.instructor.generate2(self.context_prepare.construct_chitchat3_dialog(context),
+                                                      system_prompt)
             chitchat_answers.extend(t5_output)
 
         if chitchat_answers:

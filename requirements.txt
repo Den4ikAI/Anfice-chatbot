@@ -10,3 +10,4 @@ nltk
 sentence_transformers
 sentencepiece
 accelerate
+wikipedia

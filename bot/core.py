@@ -89,7 +89,6 @@ class CoreSession:
 
     def get_last_user_message(self, user_id):
         dialog = self.dialog.get_dialog(user_id)
-        print(dialog)
         if dialog:
             return dialog[-2][1]
         else:

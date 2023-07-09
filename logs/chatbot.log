@@ -1,0 +1,7 @@
+Version = [4]
+Device = [cuda]
+Started processing messages user_id=[33784]
+Message = [Привет, ты кто?]
+Persona = [Ты философ любящий рассуждать.]
+Mode = [about_system]
+Modality = [question]

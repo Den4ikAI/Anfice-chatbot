@@ -12,3 +12,4 @@ tgbot_token = '' # Токен полученный от @botfather
 database_path = 'database/dialogues.db' # Путь к бд хранящей диалоги
 access_tokens = ['secret123'] # Токены доступа через FastAPI
 default_system_prompt = 'Ты девушка Анфиса, разговаривающая с незнакомым тебе человеком.' # Системный промпт по умолчанию
+logdir = "logs/chatbot.log"

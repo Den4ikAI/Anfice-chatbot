@@ -1,7 +1,7 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import logging
-
+import config.config as config
 
 class RuBertPhraseClassifier:
     def __init__(self):
@@ -9,11 +9,11 @@ class RuBertPhraseClassifier:
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device("cpu")
         self.logger.debug("Started loading Replica selector")
-        self.tokenizer = AutoTokenizer.from_pretrained('models/selector')
-        self.model = AutoModelForSequenceClassification.from_pretrained('models/selector').to(self.device).eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(config.phrase_classifier_path)
+        self.model = AutoModelForSequenceClassification.from_pretrained(config.phrase_classifier_path).to(self.device).eval()
         self.logger.debug('Start loading replica selector')
-        self.classes = ['about_user', 'inaccurate_question', 'exact_question', 'instruct', 'about_system', 'problem',
-                        'dialogue']
+        self.classes = ['instruct', 'question', 'dialogue', 'problem', 'about_system', 'about_user']
+
 
     def get_sentence_type(self, text):
         text = text.lower().replace(',', '').replace('?', '')

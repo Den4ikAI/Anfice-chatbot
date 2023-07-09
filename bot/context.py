@@ -1,53 +1,60 @@
+import sqlite3
+import json
+from config.config import default_system_prompt
+
+
 class Dialog:
-    def __init__(self):
-        self.dialogs = {}  # словарь для хранения диалогов
-        self.user_system_prompts = {} # словарь для хранения пользовательских системных промптов
+    def __init__(self, db_path):
+        self.conn = sqlite3.connect(db_path)
+        self.cursor = self.conn.cursor()
+        self.create_table()
+        self.default_system_prompt = default_system_prompt
+
+    def create_table(self):
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS dialogs
+                                (dialog_id INTEGER PRIMARY KEY,
+                                messages TEXT)''')
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS system_prompts
+                                (prompt_id INTEGER PRIMARY KEY,
+                                text TEXT)''')
+        self.conn.commit()
+
     def add_message(self, dialog_id, sender, text):
-        if dialog_id not in self.dialogs:
-            self.dialogs[dialog_id] = []  # создаем новый диалог, если его еще нет
-        self.dialogs[dialog_id].append((sender, text))  # добавление нового сообщения в список
+        self.cursor.execute("SELECT messages FROM dialogs WHERE dialog_id=?", (dialog_id,))
+        result = self.cursor.fetchone()
+        if result is None:
+            messages = [(sender, text)]
+        else:
+            messages = json.loads(result[0])
+            messages.append((sender, text))
+        self.cursor.execute("INSERT OR REPLACE INTO dialogs VALUES (?,?)", (dialog_id, json.dumps(messages)))
+        self.conn.commit()
 
     def add_dialog(self, dialog_id, messages):
-        self.dialogs[dialog_id] = messages  # добавление нового диалога в словарь
+        self.cursor.execute("INSERT OR REPLACE INTO dialogs VALUES (?,?)", (dialog_id, json.dumps(messages)))
+        self.conn.commit()
 
     def get_dialog(self, dialog_id):
-        if dialog_id in self.dialogs:
-            return [(sender, text) for sender, text in self.dialogs[dialog_id] if sender != 'system']  # получение диалога по id
-        else:
+        self.cursor.execute("SELECT messages FROM dialogs WHERE dialog_id=?", (dialog_id,))
+        result = self.cursor.fetchone()
+        if result is None:
             return []
+        else:
+            messages = json.loads(result[0])
+            return messages
 
     def clear_dialog(self, dialog_id):
-        self.dialogs.pop(dialog_id, None)  # удаление диалога из словаря
+        self.cursor.execute("DELETE FROM dialogs WHERE dialog_id=?", (dialog_id,))
+        self.conn.commit()
 
     def set_system_prompt(self, prompt_id, text):
-        if prompt_id not in self.user_system_prompts:
-            self.user_system_prompts[prompt_id] = ""  # создаем новую ячейку пользователя
-        self.user_system_prompts[prompt_id] = text  # добавление нового промпта в список
+        self.cursor.execute("INSERT OR REPLACE INTO system_prompts VALUES (?,?)", (prompt_id, text))
+        self.conn.commit()
 
     def get_system_prompt(self, prompt_id):
-        if prompt_id in self.user_system_prompts:
-            return self.user_system_prompts[prompt_id]
+        self.cursor.execute("SELECT text FROM system_prompts WHERE prompt_id=?", (prompt_id,))
+        result = self.cursor.fetchone()
+        if result is None:
+            return self.default_system_prompt
         else:
-            return ''
-
-
-
-# Testing
-'''
-dialog = Dialog()
-dialog.add_message(1, 'system', 'Привет!', is_system_prompt=True)
-dialog.add_message(1, 'user', 'Здравствуйте.')
-dialog.add_message(1, 'bot', 'Как ваши дела?')
-dialog.add_message(1, 'user', 'Хорошо, спасибо.')
-dialog.add_message(1, 'bot', 'Чем я могу помочь?')
-
-system_prompts = dialog.get_system_prompt(1)
-print("System Prompts:")
-for sender, text in system_prompts:
-    print(f"{sender}: {text}")
-
-dialog1 = dialog.get_dialog(1)
-print("\nDialog without System Prompts:")
-for sender, text in dialog1:
-    print(f"{sender}: {text}")
-'''
+            return result[0]

@@ -44,9 +44,11 @@ class ContextPrepare:
 
 class CoreSession:
     def __init__(self):
-        self.dialog = Dialog()
+        self.dialog = Dialog(config.database_path)
         self.logger = logging.getLogger('Core')
-        self.max_context_length = 4
+        file = logging.FileHandler("logs.log")
+        self.logger.addHandler(file)
+        self.max_context_length = 6
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info('Version = [{}]'.format(config.VERSION))
         self.logger.info('Device = [{}]'.format(self.device))
@@ -80,6 +82,25 @@ class CoreSession:
     def add_bot_message(self, user_id, message):
         self.dialog.add_message(user_id, 'bot', message)
         return None
+
+    def get_dialog(self, user_id):
+        dialog = self.dialog.get_dialog(user_id)
+        return dialog
+
+    def get_last_user_message(self, user_id):
+        dialog = self.dialog.get_dialog(user_id)
+        print(dialog)
+        if dialog:
+            return dialog[-2][1]
+        else:
+            return None
+
+    def get_last_bot_message(self, user_id):
+        dialog = self.dialog.get_dialog(user_id)
+        if dialog:
+            return dialog[-1][1]
+        else:
+            return None
 
     def set_system_prompt(self, user_id, prompt):
         self.dialog.set_system_prompt(user_id, prompt)
@@ -170,7 +191,7 @@ class CoreSession:
                                                       system_prompt)
             chitchat_answers.extend(t5_output)
 
-        elif (mode == 'exact_question' or mode == 'inaccurate_question') and modality == 'question' and len(
+        elif mode == 'question' and modality == 'question' and len(
                 context[-1].split(' ')) > 2:
             cls = self.qa_classifier.get_question_type(context[-1])
             self.logger.info('Mode = [{}]'.format(cls))

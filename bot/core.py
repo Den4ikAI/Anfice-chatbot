@@ -46,8 +46,8 @@ class CoreSession:
     def __init__(self):
         self.dialog = Dialog(config.database_path)
         self.logger = logging.getLogger('Core')
-        file = logging.FileHandler("logs.log")
-        self.logger.addHandler(file)
+        self.file = logging.FileHandler(config.logdir)
+        self.logger.addHandler(self.file)
         self.max_context_length = 6
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info('Version = [{}]'.format(config.VERSION))

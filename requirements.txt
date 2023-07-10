@@ -11,3 +11,6 @@ sentence_transformers
 sentencepiece
 accelerate
 wikipedia
+fastapi
+requests
+terminaltables

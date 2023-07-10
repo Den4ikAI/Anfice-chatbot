@@ -40,15 +40,19 @@ pip install -r requirements.txt
 ```
 Запустите консольный режим:
 ```
-python3 console.py
+python3 -m frontend.console_chat
 ```
 Или telegram-бота:
 ```
-python3 telegram_bot.py
+python3 -m frontend.telegram_bot
 ```
 FastAPI:
 ```
-python3 fastapi_api.py
+python3 -m frontend.fastapi_api
+```
+FastAPI Chat client:
+```
+python3 -m frontend.webchat.chat
 ```
 
 **Токен бота нужно вставить в файл config.py в папке config**

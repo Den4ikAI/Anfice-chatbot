@@ -8,10 +8,11 @@ from bot.text_retrieval.searcher import TextSearch
 from bot.modality_detector import ModalityDetector
 from bot.rut5_interpreter import RuT5Interpreter
 from bot.postagger import POSTagger
-import config.config as config
+from terminaltables import AsciiTable
 from rapidfuzz import fuzz
-import logging
 from tqdm import tqdm
+import config.config as config
+import logging
 import torch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -66,10 +67,21 @@ class CoreSession:
         self.qa_ranker = QARanker()
         self.interpreter = RuT5Interpreter()
 
+    def draw_dialog(self, dialog, answer, user_id):
+        table_data = [["User ID", "Turn", "Text"]]
+        dialog.append(['bot', answer])
+        for message in dialog:
+            sender, text = message
+            table_data.append([user_id, sender, text])
+
+        table_instance = AsciiTable(table_data)
+        table_instance.inner_row_border = True
+        self.logger.info(table_instance.table)
+
     def add_user_message(self, user_id, message):
         if len(message.split(' ')) > 3:
             tags = self.postagger.tag(message)
-            print(tags)
+            self.logger.info("Message tags = [{}]".format(tags))
             if any((u'NPRO' in tag) for tag in tags) or "это" in message.split(' '):
                 self.logger.info('Anaphora detected! Interpreting...')
                 context = self.dialog.get_dialog(user_id)
@@ -81,6 +93,7 @@ class CoreSession:
 
     def add_bot_message(self, user_id, message):
         self.dialog.add_message(user_id, 'bot', message)
+        self.truncate_context(user_id)
         return None
 
     def get_dialog(self, user_id):
@@ -105,10 +118,14 @@ class CoreSession:
         self.dialog.set_system_prompt(user_id, prompt)
         return None
 
+    def clear_context(self, user_id):
+        self.dialog.clear_dialog(user_id)
+        return None
+
     def truncate_context(self, user_id):
         dialog = self.dialog.get_dialog(user_id)
-        while len(dialog) > self.max_context_length:
-            dialog.pop(0)
+        if len(dialog) > self.max_context_length:
+            dialog = dialog[-self.max_context_length:]
         self.dialog.add_dialog(user_id, dialog)
         return None
 
@@ -123,14 +140,15 @@ class CoreSession:
         replicas = self.dialog.get_dialog(user_id)
         context = [dialogue[1] for dialogue in replicas]
         system_prompt = self.dialog.get_system_prompt(user_id)
+        mode = self.phrase_classifier.get_sentence_type(context[-1])
+        modality = self.modality_detector.modality(context[-1])
         chitchat_answers = []
         qa_answers = []
         self.logger.info('Started processing messages user_id=[{}]'.format(user_id))
         self.logger.info('Message = [{}]'.format(context[-1]))
+        self.logger.info('UserID = [{}]'.format(user_id))
         self.logger.info('Persona = [{}]'.format(system_prompt))
-        mode = self.phrase_classifier.get_sentence_type(context[-1])
         self.logger.info('Mode = [{}]'.format(mode))
-        modality = self.modality_detector.modality(context[-1])
         self.logger.info('Modality = [{}]'.format(modality))
 
         if mode == 'dialogue':
@@ -204,24 +222,23 @@ class CoreSession:
                             paragraph = self.text_search.get_right_answer(paragraphs, message)
                         except:
                             paragraph = None
-                        # print(paragraph)
                         if paragraph is not None:
                             qa_answers.extend(
                                 self.instructor.generate(
                                     self.context_prepare.construct_retriever_context(paragraph, message)))
                         else:
-                            fred = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
-                            fred = [fred[0].split('Собеседник сказал:')[0]]
-                            qa_answers.extend(fred)
+                            t5_output = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
+                            t5_output = [t5_output[0].split('Собеседник сказал:')[0]]
+                            qa_answers.extend(t5_output)
                 else:
-                    fred = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
-                    fred = [fred[0].split('Собеседник сказал:')[0]]
-                    qa_answers.extend(fred)
+                    t5_output = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
+                    t5_output = [t5_output[0].split('Собеседник сказал:')[0]]
+                    qa_answers.extend(t5_output)
             elif cls == 'inaccurate_question':
                 self.logger.warning('Internet search did not give results. The generation may be inaccurate')
-                fred = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
-                fred = [fred[0].split('Собеседник сказал:')[0]]
-                qa_answers.extend(fred)
+                t5_output = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
+                t5_output = [t5_output[0].split('Собеседник сказал:')[0]]
+                qa_answers.extend(t5_output)
 
         elif mode == 'instruct':
             message = context[-1]
@@ -234,20 +251,19 @@ class CoreSession:
                         paragraph = self.text_search.get_right_answer(paragraphs, message)
                     except:
                         paragraph = None
-                    # print(paragraph)
                     if paragraph is not None:
                         qa_answers.extend(
                             self.instructor.generate(
                                 self.context_prepare.construct_retriever_context(paragraph, message)))
                     else:
-                        fred = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
-                        fred = [fred[0].split('Собеседник сказал:')[0]]
-                        qa_answers.extend(fred)
+                        t5_output = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
+                        t5_output = [t5_output[0].split('Собеседник сказал:')[0]]
+                        qa_answers.extend(t5_output)
             else:
                 self.logger.warning('Internet search did not give results. The generation may be inaccurate')
-                fred = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
-                fred = [fred[0].split('Собеседник сказал:')[0]]
-                qa_answers.extend(fred)
+                t5_output = self.instructor.generate(self.context_prepare.prepare_qa_context(context))
+                t5_output = [t5_output[0].split('Собеседник сказал:')[0]]
+                qa_answers.extend(t5_output)
         elif mode == 'problem':
             message = context[-1]
             if len(context) > 2:
@@ -285,12 +301,15 @@ class CoreSession:
             chitchat_answers.extend(t5_output)
 
         if chitchat_answers:
+            self.draw_dialog(replicas, chitchat_answers[0], user_id)
+            self.logger.info('Answer = [{}]'.format(chitchat_answers[0]))
             return chitchat_answers[0]
         elif qa_answers:
-            return self.get_best_qa_response(context, qa_answers)
+            best_response = self.get_best_qa_response(context, qa_answers)
+            self.draw_dialog(replicas, best_response, user_id)
+            self.logger.info('Answer = [{}]'.format(best_response))
+            return best_response
         else:
+            self.draw_dialog(replicas, None, user_id)
+            self.logger.info('Answer = [{}]'.format(None))
             return None
-
-    def clear_context(self, user_id):
-        self.dialog.clear_dialog(user_id)
-        return None

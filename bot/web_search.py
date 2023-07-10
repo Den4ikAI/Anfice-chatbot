@@ -2,8 +2,11 @@ from googlesearch import search
 import wikipedia
 import logging
 import trafilatura
+from trafilatura.settings import use_config
 
 wikipedia.set_lang('ru')
+config = use_config()
+config.set("DEFAULT", "EXTRACTION_TIMEOUT", "0")
 
 class InternetSearch:
     def __init__(self):
@@ -26,7 +29,7 @@ class InternetSearch:
 
     def get_url_text(self, url):
         downloaded = trafilatura.fetch_url(url)
-        output = trafilatura.extract(downloaded)
+        output = trafilatura.extract(downloaded, config=config)
         return output
 
     def wiki_sort(self, lst):

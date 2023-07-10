@@ -5,7 +5,7 @@ from config.config import default_system_prompt
 
 class Dialog:
     def __init__(self, db_path):
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.create_table()
         self.default_system_prompt = default_system_prompt
